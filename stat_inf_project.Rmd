@@ -1,0 +1,148 @@
+---
+title: "Statistical inference with the GSS data"
+output: 
+  html_document: 
+    fig_height: 4
+    highlight: pygments
+    theme: spacelab
+---
+
+## Setup
+
+### Load packages
+
+```{r load-packages, message = FALSE}
+library(ggplot2)
+library(dplyr)
+library(statsr)
+```
+
+### Load data
+
+```{r load-data}
+load("gss.Rdata")
+```
+
+
+
+* * *
+
+## Part 1: Data Description & Scope of Inference
+This project uses an extract of the General Social Survey (GSS) Cumulative File 1972-2012 provided by Duke University to students taking the course on Coursera.
+
+The documentation provides the following description of GSS and it's data collection, "Since 1972, the General Social Survey (GSS) has been monitoring societal change and studying the growing complexity of American society. The GSS aims to gather data on contemporary American society in order to monitor and explain trends and constants in attitudes, behaviors, and attributes; to examine the structure and functioning of society in general as well as the role played by relevant subgroups; to compare the United States to other societies in order to place American society in comparative perspective and develop cross-national models of human society; and to make high-quality data easily accessible to scholars, students, policy makers, and others, with minimal cost and waiting.
+
+GSS questions cover a diverse range of issues including national spending priorities, marijuana use, crime and punishment, race relations, quality of life, confidence in institutions, and sexual behavior."
+
+From loading the dataset, I can see that there are close to 57,000 observations and 114 variables within the dataset.
+
+Since the responses are collected from respondents that speak either English or Spanish and are over 18 years of age, there does not seem to be any particular sampling or bias issues. I think it is safe to assume that it is random sampling and the results of the survey can be generalized to the larger population. 
+
+There is no mention of respondents being assigned to a control group, so there is no question of random assignment at place here. Hence, I think it is safe to assume that we cannot infer causality from the data. 
+
+* * *
+
+## Part 2: Research question
+
+Do people with different political preferences think that we are spending too little money on improving and protecting the environment? 
+
+This is a topic that comes up often when debating climate change and there seems to be an uninformed opinion that a certain subset of the population seem that support one political party, seem to have no regard for the environment whatsoever. I prefer having data by my side, rather than arguing anecdotally - and that is the reason why I am performing this analysis. 
+
+I will be using data from the year 2012 as it is the subset of data that is most relevant to our current scenario. 
+* * *
+
+## Part 3: Exploratory data analysis
+
+```{r}
+subgss <- filter(gss, year == 2012) %>% select(partyid, natenvir)
+```
+
+```{r}
+str(subgss)
+```
+
+There are 8 levels of party affiliation and 3 levels of the variable 'How much do you think we are spending on improving and protecting the environment?'. Now, let us plot the responses for the NATENVIR varialbe on the x-axis to assess the proportion. 
+
+```{r}
+ggplot(subgss, aes(x=natenvir)) + geom_bar() + ggtitle('How much do you think we are spending on the environment?') + xlab('Response') + theme_bw()
+```
+
+From the plot above, we can see that there are approximately 1000 people who have not responded to the aforementioned question. Hence, it makes sense to remove those values from our analysis. 
+
+```{r}
+subgss = na.omit(subgss)
+table(subgss)
+```
+
+```{r}
+summary(subgss)
+```
+
+```{r}
+ggplot(subgss, aes(x=natenvir)) + geom_bar() + xlab('Response Levels') + theme_minimal()
+```
+
+Now, let us visualize the responses by parties and observe if there are any trends we can visualize. 
+
+```{r}
+ggplot(subgss, aes(x = natenvir, fill = partyid)) + geom_bar() + xlab('How much do you think we are spending on improving the environment?') + ggtitle('Party Affiliation vs. Opinion on spending to improve environment')
+```
+
+From the plot above, I can make a few inferences which I am noting down below, 
+
+1) Among the people who voted that the spending on improving environment was too little, a significant proportion of those people were leaning towards Democratic & Independent affiliation. 
+
+2) The proportion of respondents leaning towards Republican affiliation make up a significant proportion of people who voted that we were spending too much on improving the environment. 
+
+3) From the amount of respondents that have chosen the 'Too Little' and 'About Right' options - I feel that people that this question has resonated more with people who are concerned about climate change / environmental impact, than with people who are not concerned with these topics. 
+
+## Part 4: Inference
+
+HYPOTHESIS:
+
+H0 - NULL HYPOTHESIS : There is no relationship between political party affiliation and opinion on spending for improving the environment. 
+
+HA - ALTERNATIVE HYPOTHESIS : There is a relationship between political party affiliation and respondent's opinion on the spending for improving and protecting the environment. 
+
+CONDITIONS: 
+
+INDEPENDENCE - Since the survey was somewhat similar to a random sampling based one (inferred from the description of data provided by GSS), we can assume that the condition of independence has been met. 
+
+SAMPLE SIZES - Sample size (974 respondents) is sufficiently large and is not more than 10% of the population (57xx respondents).
+
+SUCCESS-FAILURE CONDITION - We need to check if all cells in the table have more than 10 respondents. 
+
+```{r}
+table(subgss)
+```
+
+As you can see above, there are some cells with less than 10 respondents. As a result, I am going to be including data from both 2010 - 2012 to overcome this problem.
+
+```{r}
+subgss = filter(gss, year >= 2010) %>% select(partyid, natenvir)
+```
+
+Now, our dataframe has 4018 observations as opposed to the ~1900 observations previously. Let us omit the NA values. 
+
+```{r}
+subgss = na.omit(subgss)
+table(subgss)
+```
+
+Now that all three conditions have been met, we will be performing the chi-square test on our table above. 
+
+```{r}
+gsstable = table(subgss)
+```
+
+```{r}
+chisq.test(gsstable)
+```
+
+## Interpretation of Result
+
+The x-Squared value is 204.05, the degrees of freedom are 14 ((8-1) * (3-1)) and the p-value is very very close to zero. At a 95% significance level or even at a 98% significance level, we can reject the null hypothesis. This means that there is indeed a relationship between political affiliation and views on spending for improving and protecting the environment. 
+
+In the future, it would be wise to include more relevant variables such as region, income and also use more relevant data to check if the relationship holds. 
+
+Since we were dealing with categorical variables in both our columns, it was not possible to calculate a confidence interval for the analysis.
